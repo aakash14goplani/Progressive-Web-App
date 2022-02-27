@@ -1,7 +1,8 @@
-var shareImageButton = document.querySelector('#share-image-button');
-var createPostArea = document.querySelector('#create-post');
-var closeCreatePostModalButton = document.querySelector('#close-create-post-modal-btn');
-var sharedMomentsArea = document.querySelector('#shared-moments');
+const shareImageButton = document.querySelector('#share-image-button');
+const createPostArea = document.querySelector('#create-post');
+const closeCreatePostModalButton = document.querySelector('#close-create-post-modal-btn');
+const sharedMomentsArea = document.querySelector('#shared-moments');
+const URL = 'https://httpbin.org/get';
 
 function openCreatePostModal() {
   createPostArea.style.display = 'block';
@@ -20,6 +21,19 @@ function openCreatePostModal() {
 
     deferredPrompt = null;
   }
+
+  // unregisterServiceWorker();
+}
+
+function unregisterServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then(function (registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          registrations[i].unregister();
+        }
+      })
+  }
 }
 
 function closeCreatePostModal() {
@@ -31,7 +45,7 @@ function onSaveButtonClicked(event) {
   if ('caches' in window) {
     caches.open('user-requested')
       .then((cache) => {
-        cache.add('https://httpbin.org/get');
+        cache.add('URL');
         cache.add('/src/images/sf-boat.jpg');
       });
   }
@@ -40,6 +54,12 @@ function onSaveButtonClicked(event) {
 shareImageButton.addEventListener('click', openCreatePostModal);
 
 closeCreatePostModalButton.addEventListener('click', closeCreatePostModal);
+
+function removeCard() {
+  while (sharedMomentsArea.hasChildNodes()) {
+    sharedMomentsArea.removeChild(sharedMomentsArea.lastChild);
+  }
+}
 
 function createCard() {
   var cardWrapper = document.createElement('div');
@@ -70,14 +90,34 @@ function createCard() {
   cardSupportingText.appendChild(cardSaveButton);
   cardSaveButton.addEventListener('click', onSaveButtonClicked); */
 
-  componentHandler.upgradeElement(cardWrapper);
+  // componentHandler.upgradeElement(cardWrapper);
   sharedMomentsArea.appendChild(cardWrapper);
 }
 
-fetch('https://httpbin.org/get')
+let networkResponseReceived = false;
+
+fetch(URL)
   .then(function (res) {
     return res.json();
   })
   .then(function (data) {
+    networkResponseReceived = true;
+    removeCard();
     createCard();
   });
+
+/** CACHE THEN NETWORK - page interacts with cache directly */
+if ('caches' in window) {
+  caches.match(URL)
+    .then(function (response) {
+      if (response) {
+        return response.json();
+      }
+    })
+    .then(function (data) {
+      if (data && !networkResponseReceived) {
+        removeCard();
+        createCard();
+      }
+    });
+}
