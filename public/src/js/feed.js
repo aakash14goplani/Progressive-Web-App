@@ -2,7 +2,7 @@ const shareImageButton = document.querySelector('#share-image-button');
 const createPostArea = document.querySelector('#create-post');
 const closeCreatePostModalButton = document.querySelector('#close-create-post-modal-btn');
 const sharedMomentsArea = document.querySelector('#shared-moments');
-const URL = 'https://httpbin.org/get';
+const URL = 'https://employees-a405a-default-rtdb.firebaseio.com/posts.json';
 
 function openCreatePostModal() {
   createPostArea.style.display = 'block';
@@ -61,13 +61,23 @@ function removeCard() {
   }
 }
 
-function createCard() {
+function updateUI(data) {
+  removeCard();
+  for (let key in data) {
+    const dataObj = data[key];
+    if (dataObj) {
+      createCard(dataObj);
+    }
+  }
+}
+
+function createCard(dataObj) {
   var cardWrapper = document.createElement('div');
   cardWrapper.className = 'shared-moment-card mdl-card mdl-shadow--2dp';
 
   var cardTitle = document.createElement('div');
   cardTitle.className = 'mdl-card__title';
-  cardTitle.style.backgroundImage = 'url("/src/images/sf-boat.jpg")';
+  cardTitle.style.backgroundImage = 'url(' + dataObj.image + ')';
   cardTitle.style.backgroundSize = 'cover';
   cardTitle.style.height = '180px';
   cardWrapper.appendChild(cardTitle);
@@ -75,12 +85,12 @@ function createCard() {
   var cardTitleTextElement = document.createElement('h2');
   cardTitleTextElement.style.color = 'white';
   cardTitleTextElement.className = 'mdl-card__title-text';
-  cardTitleTextElement.textContent = 'San Francisco Trip';
+  cardTitleTextElement.textContent = dataObj.title;
   cardTitle.appendChild(cardTitleTextElement);
 
   var cardSupportingText = document.createElement('div');
   cardSupportingText.className = 'mdl-card__supporting-text';
-  cardSupportingText.textContent = 'In San Francisco';
+  cardSupportingText.textContent = dataObj.location;
   cardSupportingText.style.textAlign = 'center';
   cardWrapper.appendChild(cardSupportingText);
 
@@ -101,12 +111,12 @@ fetch(URL)
     return res.json();
   })
   .then(function (data) {
+    console.log('Data drom n/w: ', data);
     networkResponseReceived = true;
-    removeCard();
-    createCard();
+    updateUI(data);
   });
 
-/** CACHE THEN NETWORK - page interacts with cache directly */
+/** CACHE THEN NETWORK - page interacts with cache directly
 if ('caches' in window) {
   caches.match(URL)
     .then(function (response) {
@@ -116,8 +126,16 @@ if ('caches' in window) {
     })
     .then(function (data) {
       if (data && !networkResponseReceived) {
-        removeCard();
-        createCard();
+        updateUI(data);
+      }
+    });
+} */
+
+if ('indexedDB' in window) {
+  readAllData('posts')
+    .then(function (data) {
+      if (data && !networkResponseReceived) {
+        updateUI(data);
       }
     });
 }

@@ -1,17 +1,20 @@
-// importScripts('/src/js/utility.js');
+importScripts('/src/js/idb.js');
+importScripts('/src/js/utility.js');
 
 let CACHE_STATIC_NAME = 'static-v1';
 let CACHE_DYNAMIC_NAME = 'dynamic-v1';
-const URL = 'https://httpbin.org/get';
+const URL = 'https://employees-a405a-default-rtdb.firebaseio.com/posts.json';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   'offline.html',
   '/favicon.ico',
   '/manifest.json',
+  '/src/js/idb.js',
   '/src/js/app.js',
   '/src/js/feed.js',
   '/src/js/material.min.js',
+  '/src/js/material.min.js.map',
   '/src/css/app.css',
   '/src/css/feed.css',
   '/src/images/main-image.jpg',
@@ -134,9 +137,27 @@ function cacheThenNetwork(event) {
     });
 }
 
+function cacheThenNetworkWithIndexedDB(event) {
+  return fetch(event.request)
+    .then(function (res) {
+      var clonedRes = res.clone();
+      clearAllData('posts')
+        .then(function () {
+          return clonedRes.json();
+        })
+        .then(function (data) {
+          for (var key in data) {
+            writeData('posts', data[key])
+          }
+        });
+      return res;
+    })
+}
+
 function miscellaneousStrategies(event) {
   if (event.request.url.indexOf(URL) > -1) {
-    return cacheThenNetwork(event);
+    // cacheThenNetwork(event);
+    return cacheThenNetworkWithIndexedDB(event);
   } else if (isInArray(event.request.url, STATIC_ASSETS)) {
     return cacheOnly(event);
   } else {
