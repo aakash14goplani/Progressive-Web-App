@@ -27,7 +27,6 @@ this.addEventListener('install', (e) => {
   console.log('Service Worker: Installed', e);
   e.waitUntil(
     caches.open(CACHE_STATIC_NAME).then((cache) => {
-      console.log('Service Worker: Caching Static Files');
       /* cache.add('/');
       cache.add('/index.html');
       cache.add('/src/js/app.js'); */
@@ -42,7 +41,6 @@ this.addEventListener('activate', (e) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(cacheNames.map((cacheName) => {
         if (cacheName !== CACHE_STATIC_NAME && cacheName !== CACHE_DYNAMIC_NAME) {
-          console.log('Service Worker: Clearing Old Cache: ', cacheName);
           return caches.delete(cacheName);
         }
       }));
@@ -174,3 +172,33 @@ function isInArray(string, array) {
   }
   return array.indexOf(cachePath) > -1;
 }
+
+self.addEventListener('sync', function (event) {
+  if (event.tag === 'sync-new-posts') {
+    event.waitUntil(
+      readAllData('sync-posts')
+        .then(function (data) {
+          for (let dt of data) {
+            fetch(URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({
+                id: dt.id,
+                title: dt.title,
+                location: dt.location,
+                image: dt.image
+              })
+            }).then(function (res) {
+              if (res.ok) {
+                deleteItemFromData('sync-posts', dt.id);
+              }
+            })
+              .catch(function (err) { });
+          }
+        })
+    );
+  }
+})

@@ -3,6 +3,9 @@ const createPostArea = document.querySelector('#create-post');
 const closeCreatePostModalButton = document.querySelector('#close-create-post-modal-btn');
 const sharedMomentsArea = document.querySelector('#shared-moments');
 const URL = 'https://employees-a405a-default-rtdb.firebaseio.com/posts.json';
+const form = document.querySelector('form');
+const titleInput = document.querySelector('#title');
+const locationInput = document.querySelector('#location');
 
 function openCreatePostModal() {
   createPostArea.style.display = 'block';
@@ -10,8 +13,6 @@ function openCreatePostModal() {
     deferredPrompt.prompt();
 
     deferredPrompt.userChoice.then(function (choiceResult) {
-      console.log(choiceResult.outcome);
-
       if (choiceResult.outcome === 'dismissed') {
         console.log('User cancelled installation');
       } else {
@@ -111,7 +112,6 @@ fetch(URL)
     return res.json();
   })
   .then(function (data) {
-    console.log('Data drom n/w: ', data);
     networkResponseReceived = true;
     updateUI(data);
   });
@@ -138,4 +138,58 @@ if ('indexedDB' in window) {
         updateUI(data);
       }
     });
+}
+
+form.addEventListener('submit', function (event) {
+  event.preventDefault();
+
+  if (titleInput.value.trim() === '' || locationInput.value.trim() === '') {
+    alert('Please enter valid values!');
+    return;
+  }
+
+  closeCreatePostModal();
+
+  if ('SyncManager' in window && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.ready
+      .then(function (sw) {
+        const post = {
+          id: new Date().toISOString(),
+          title: titleInput.value,
+          location: locationInput.value,
+          image: 'https://placeimg.com/640/480/any'
+        };
+
+        writeData('sync-posts', post)
+          .then(function () {
+            return sw.sync.register('sync-new-posts');
+          })
+          .then(function () {
+            const snackbarContainer = document.querySelector('#confirmation-toast');
+            const data = { message: 'Your Post was saved for syncing!' };
+            snackbarContainer.MaterialSnackbar.showSnackbar(data);
+          })
+          .catch(function (err) { });
+      })
+  } else {
+    sendData();
+  }
+});
+
+function sendData() {
+  fetch(URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      id: new Date().toISOString(),
+      title: titleInput.value,
+      location: locationInput.value,
+      image: 'https://placeimg.com/640/480/any'
+    })
+  }).then(function (res) {
+    updateUI(res);
+  });
 }
