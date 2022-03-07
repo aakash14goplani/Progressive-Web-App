@@ -46,3 +46,18 @@ function deleteItemFromData(st, id) {
 		})
 		.then(function () { });
 }
+
+function urlBase64ToUint8Array(base64string) {
+	var padding = '='.repeat((4 - base64string.length % 4) % 4);
+	var base64 = (base64string + padding)
+		.replace(/\-/g, '+')
+		.replace(/_/g, '/');
+
+	var rawData = window.atob(base64);
+	var outputArray = new Uint8Array(rawData.length);
+
+	for (var i = 0; i < rawData.length; ++i) {
+		outputArray[i] = rawData.charCodeAt(i);
+	}
+	return outputArray;
+}

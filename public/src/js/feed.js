@@ -7,6 +7,9 @@ const form = document.querySelector('form');
 const titleInput = document.querySelector('#title');
 const locationInput = document.querySelector('#location');
 
+/**
+ * display banner message for installing PWA
+ */
 function openCreatePostModal() {
   createPostArea.style.display = 'block';
   if (deferredPrompt) {
@@ -26,6 +29,7 @@ function openCreatePostModal() {
   // unregisterServiceWorker();
 }
 
+// unregister service worker
 function unregisterServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations()
@@ -37,6 +41,7 @@ function unregisterServiceWorker() {
   }
 }
 
+// close the create post modal
 function closeCreatePostModal() {
   createPostArea.style.display = 'none';
 }
@@ -140,6 +145,10 @@ if ('indexedDB' in window) {
     });
 }
 
+/**
+ * Used for background sync.
+ * https://github.com/aakash14goplani/FullStack/wiki/PWA-Background-Sync
+ */
 form.addEventListener('submit', function (event) {
   event.preventDefault();
 

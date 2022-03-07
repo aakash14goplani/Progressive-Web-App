@@ -23,6 +23,9 @@ const STATIC_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css'
 ];
 
+/**
+ * Install the service worker and cache the static assets
+ */
 this.addEventListener('install', (e) => {
   console.log('Service Worker: Installed', e);
   e.waitUntil(
@@ -35,6 +38,9 @@ this.addEventListener('install', (e) => {
   );
 });
 
+/**
+ * Activate the service worker and clear old caches
+ */
 this.addEventListener('activate', (e) => {
   console.log('Service Worker: Activated', e);
   e.waitUntil(
@@ -49,6 +55,9 @@ this.addEventListener('activate', (e) => {
   return self.clients.claim();
 });
 
+/**
+ * Fetch the data from the network and cache it
+ */
 this.addEventListener('fetch', (event) => {
   event.respondWith(
     // cacheWithNetworkFallback(event)
@@ -60,6 +69,11 @@ this.addEventListener('fetch', (event) => {
   );
 });
 
+/**
+ * Trim (delete cache entries) the cache to a max size
+ * @param {*} cacheName 
+ * @param {*} maxItems 
+ */
 function trimCache(cacheName, maxItems) {
   caches.open(cacheName)
     .then(function (cache) {
@@ -73,6 +87,11 @@ function trimCache(cacheName, maxItems) {
     })
 }
 
+/**
+ * cache With Network Fallback strategy
+ * @param {*} event 
+ * @returns 
+ */
 function cacheWithNetworkFallback(event) {
   return caches.match(event.request)
     .then(function (response) {
@@ -100,6 +119,11 @@ function cacheWithNetworkFallback(event) {
     })
 }
 
+/**
+ * network With Cache Fallback strategy
+ * @param {*} event 
+ * @returns 
+ */
 function networkWithCacheFallback(event) {
   return fetch(event.request)
     .then(function (res) {
@@ -115,14 +139,29 @@ function networkWithCacheFallback(event) {
     });
 }
 
+/**
+ * network Only strategy
+ * @param {*} event 
+ * @returns 
+ */
 function networkOnly(event) {
   return fetch(event.request);
 }
 
+/**
+ * cache Only strategy
+ * @param {*} event 
+ * @returns 
+ */
 function cacheOnly(event) {
   return caches.match(event.request);
 }
 
+/**
+ * cache Then Network strategy
+ * @param {*} event 
+ * @returns 
+ */
 function cacheThenNetwork(event) {
   return caches.open(CACHE_DYNAMIC_NAME)
     .then((cache) => {
@@ -135,6 +174,11 @@ function cacheThenNetwork(event) {
     });
 }
 
+/**
+ * cache Then Network strategy with storage in IndexedDB
+ * @param {*} event 
+ * @returns 
+ */
 function cacheThenNetworkWithIndexedDB(event) {
   return fetch(event.request)
     .then(function (res) {
@@ -152,6 +196,11 @@ function cacheThenNetworkWithIndexedDB(event) {
     })
 }
 
+/**
+ * miscellaneous Strategies - mixing one or more cache strategies
+ * @param {*} event 
+ * @returns 
+ */
 function miscellaneousStrategies(event) {
   if (event.request.url.indexOf(URL) > -1) {
     // cacheThenNetwork(event);
@@ -163,6 +212,12 @@ function miscellaneousStrategies(event) {
   }
 }
 
+/**
+ * check if the url is in the array i.e. cache entry is already present in static assets
+ * @param {*} string 
+ * @param {*} array 
+ * @returns 
+ */
 function isInArray(string, array) {
   let cachePath;
   if (string.indexOf(self.origin) === 0) { // request targets domain where we serve the page from (i.e. NOT a CDN)
@@ -173,6 +228,10 @@ function isInArray(string, array) {
   return array.indexOf(cachePath) > -1;
 }
 
+/**
+ * Used for background sync.
+ * https://github.com/aakash14goplani/FullStack/wiki/PWA-Background-Sync
+ */
 self.addEventListener('sync', function (event) {
   if (event.tag === 'sync-new-posts') {
     event.waitUntil(
@@ -201,4 +260,63 @@ self.addEventListener('sync', function (event) {
         })
     );
   }
-})
+});
+
+/**
+ * Used for web push notification when notification is clicked
+ */
+self.addEventListener('notificationclick', function (event) {
+  var notification = event.notification;
+  var action = event.action;
+
+  if (action === 'confirm') {
+    notification.close();
+  } else {
+    event.waitUntil(
+      // redirect user to particular path
+      clients.matchAll()
+        .then(function (clis) {
+          var client = clis.find(function (c) {
+            return c.visibilityState === 'visible';
+          });
+
+          if (client !== undefined) {
+            client.navigate(notification.data.url);
+            client.focus();
+          } else {
+            clients.openWindow(notification.data.url);
+          }
+          notification.close();
+        })
+    );
+  }
+});
+
+/**
+ * Used for web push notification when notification is closed
+ */
+self.addEventListener('notificationclose', function (event) { });
+
+/**
+ * Used for web push notification when notification is shown
+ */
+self.addEventListener('push', function (event) {
+  const data = { title: 'New!', content: 'Something new happened!', openUrl: '/' };
+
+  if (event.data) {
+    data = JSON.parse(event.data.text());
+  }
+
+  const options = {
+    body: data.content,
+    icon: '/src/images/icons/app-icon-96x96.png',
+    badge: '/src/images/icons/app-icon-96x96.png',
+    data: {
+      url: data.openUrl
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
