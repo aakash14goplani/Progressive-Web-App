@@ -6,12 +6,41 @@ const URL = 'https://employees-a405a-default-rtdb.firebaseio.com/posts.json';
 const form = document.querySelector('form');
 const titleInput = document.querySelector('#title');
 const locationInput = document.querySelector('#location');
+const videoPlayer = document.querySelector('#player');
+const canvasElement = document.querySelector('#canvas');
+const captureButton = document.querySelector('#capture-btn');
+const imagePicker = document.querySelector('#image-picker');
+const imagePickerArea = document.querySelector('#pick-image');
+
+/** */
+function initializeMedia() {
+  if (!('mediaDevices' in navigator)) {
+    navigator.mediaDevices = {};
+  }
+
+  if (!('getUserMedia' in navigator.mediaDevices)) {
+    navigator.mediaDevices.getUserMedia = function (constraints) {
+      const getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+      if (!getUserMedia) {
+        return Promise.reject(new Error('getUserMedia is not implemented!'));
+      }
+
+      return new Promise(function (resolve, reject) {
+        getUserMedia.call(navigator, constraints, resolve, reject);
+      });
+    }
+  }
+}
 
 /**
  * display banner message for installing PWA
  */
 function openCreatePostModal() {
   createPostArea.style.display = 'block';
+  // createPostArea.style.transform = 'translateY(0)';
+  initializeMedia();
+
   if (deferredPrompt) {
     deferredPrompt.prompt();
 
