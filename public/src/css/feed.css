@@ -21,8 +21,14 @@
   margin: auto;
 }
 
-#create-post #pick-image {
+#location-loader {
   display: none;
+}
+
+#pick-image {
+  display: none;
+  flex-direction: column;
+  align-items: center;
 }
 
 #create-post #capture-btn {

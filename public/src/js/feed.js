@@ -11,8 +11,15 @@ const canvasElement = document.querySelector('#canvas');
 const captureButton = document.querySelector('#capture-btn');
 const imagePicker = document.querySelector('#image-picker');
 const imagePickerArea = document.querySelector('#pick-image');
+const locationBtn = document.querySelector('#location-btn');
+const locationLoader = document.querySelector('#location-loader');
+let picture;
+let fetchedLocation = { lat: 0, lng: 0 };
 
-/** */
+/**
+ * Initialize video player, if available else displays image picker
+ * Initial few lines of code is creating polyfill for older browsers
+ */
 function initializeMedia() {
   if (!('mediaDevices' in navigator)) {
     navigator.mediaDevices = {};
@@ -31,6 +38,66 @@ function initializeMedia() {
       });
     }
   }
+
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(function (stream) {
+      videoPlayer.srcObject = stream;
+      videoPlayer.style.display = 'block';
+    })
+    .catch(function (err) {
+      imagePickerArea.style.display = 'flex';
+    });
+}
+
+// click on capture button to get image captured by video
+captureButton.addEventListener('click', function (event) {
+  canvasElement.style.display = 'block';
+  videoPlayer.style.display = 'none';
+  captureButton.style.display = 'none';
+  const context = canvasElement.getContext('2d');
+  context.drawImage(videoPlayer, 0, 0, canvas.width, videoPlayer.videoHeight / (videoPlayer.videoWidth / canvas.width));
+  videoPlayer.srcObject.getVideoTracks().forEach(function (track) {
+    track.stop();
+  });
+  picture = dataURItoBlob(canvasElement.toDataURL());
+});
+
+imagePicker.addEventListener('change', function (event) {
+  picture = event.target.files[0];
+});
+
+// location related stuff
+locationBtn.addEventListener('click', function (event) {
+  let sawAlert = false;
+  locationBtn.style.display = 'none';
+  locationLoader.style.display = 'block';
+
+  if (!('geolocation' in navigator)) {
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(function (position) {
+    locationLoader.style.display = 'none';
+    locationBtn.style.display = 'inline';
+    locationInput.value = 'Ulhasnagar';
+    fetchedLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+    document.querySelector('#manual-location').classList.add('is-focused');
+  }, function (err) {
+    locationLoader.style.display = 'none';
+    locationBtn.style.display = 'inline';
+    if (!sawAlert) {
+      alert('Could not fetch location, please enter manually!');
+      sawAlert = true;
+    }
+    fetchedLocation = { lat: 0, lng: 0 };
+  },
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+});
+
+function initializeLocation() {
+  if (!('geolocation' in navigator)) {
+    locationBtn.style.display = 'none';
+  }
 }
 
 /**
@@ -40,6 +107,7 @@ function openCreatePostModal() {
   createPostArea.style.display = 'block';
   // createPostArea.style.transform = 'translateY(0)';
   initializeMedia();
+  initializeLocation();
 
   if (deferredPrompt) {
     deferredPrompt.prompt();
@@ -73,6 +141,17 @@ function unregisterServiceWorker() {
 // close the create post modal
 function closeCreatePostModal() {
   createPostArea.style.display = 'none';
+  imagePickerArea.style.display = 'none';
+  videoPlayer.style.display = 'none';
+  canvasElement.style.display = 'none';
+  locationBtn.style.display = 'inline';
+  locationLoader.style.display = 'none';
+  captureButton.style.display = 'inline';
+  if (videoPlayer.srcObject) {
+    videoPlayer.srcObject.getVideoTracks().forEach(function (track) {
+      track.stop();
+    });
+  }
 }
 
 // user initiated cache storage
@@ -195,7 +274,8 @@ form.addEventListener('submit', function (event) {
           id: new Date().toISOString(),
           title: titleInput.value,
           location: locationInput.value,
-          image: 'https://placeimg.com/640/480/any'
+          picture,
+          rawLocation: fetchedLocation
         };
 
         writeData('sync-posts', post)
@@ -215,18 +295,18 @@ form.addEventListener('submit', function (event) {
 });
 
 function sendData() {
+  let postData = new FormData();
+  const id = new Date().toISOString();
+  postData.append('id', id);
+  postData.append('title', titleInput.value);
+  postData.append('location', locationInput.value);
+  postData.append('file', picture, id + '.png');
+  postData.append('rawLocationLat', fetchedLocation.lat);
+  postData.append('rawLocationLng', fetchedLocation.lng);
+
   fetch(URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify({
-      id: new Date().toISOString(),
-      title: titleInput.value,
-      location: locationInput.value,
-      image: 'https://placeimg.com/640/480/any'
-    })
+    body: postData
   }).then(function (res) {
     updateUI(res);
   });

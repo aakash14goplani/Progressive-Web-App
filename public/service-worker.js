@@ -13,6 +13,7 @@ const STATIC_ASSETS = [
   '/src/js/idb.js',
   '/src/js/app.js',
   '/src/js/feed.js',
+  '/src/js/utility.js',
   '/src/js/material.min.js',
   '/src/js/material.min.js.map',
   '/src/css/app.css',
@@ -238,24 +239,27 @@ self.addEventListener('sync', function (event) {
       readAllData('sync-posts')
         .then(function (data) {
           for (let dt of data) {
+            let postData = new FormData();
+            postData.append('id', dt.id);
+            postData.append('title', dt.title);
+            postData.append('location', dt.location);
+            postData.append('file', dt.picture, dt.id + '.png');
+            postData.append('rawLocationLat', dt.rawLocation.lat);
+            postData.append('rawLocationLng', dt.rawLocation.lng);
+
             fetch(URL, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify({
-                id: dt.id,
-                title: dt.title,
-                location: dt.location,
-                image: dt.image
-              })
+              body: postData
             }).then(function (res) {
               if (res.ok) {
-                deleteItemFromData('sync-posts', dt.id);
+                res.json()
+                  .then(function (resData) {
+                    deleteItemFromData('sync-posts', resData.id);
+                  });
               }
-            })
-              .catch(function (err) { });
+            }).catch(function (err) {
+              console.log('Error while sending data', err);
+            });
           }
         })
     );
